@@ -1,0 +1,64 @@
+ipof
+----
+ipof is a very small utility to print the IPv4 address of an interface.
+
+	$ ipof en1
+	10.0.1.2
+
+For ease-of-use in provisioning scripts, it does not print a newline.
+
+
+Using with Teleport and Rackspace Cloudservers
+----------------------------------------------
+Cloudservers have two interfaces: eth0 and eth1, which represent your public
+and private network connections, respectively. Bandwidth between Cloudservers
+in the same datacenter ("ServiceNet") is completely free, not to mention
+quite a bit faster. For this and security reasons, it's advantageous to run
+things like memcached and database servers on internal IPs only. But when
+spinning up servers, you might have to end up hand-editing config files after
+the fact to get this to work, which defeats a lot of the point of
+disposability.
+
+The lowest common denominator is to set a few environment variables whenever
+Teleport runs, which can then be used in Teleport ERB templates (e.g. config
+files), Makefiles, shell scripts, and from programs directly.
+
+Everything below is relative to your Teleport root.
+
+1. Check out ipof so it will end up in /opt/ipof:
+
+	mkdir -p files/opt/ipof
+	git clone git://github.com/eksdyne/ipof.git files/opt/ipof
+
+2. Create a similar directory to hold an environment init script:
+
+	mkdir -p files/opt/env_init
+
+3. Paste this script into files/opt/env_init/env_init.sh:
+
+	#!/bin/sh
+
+	touch /etc/environment
+	echo PUBLIC_IP=$(ipof eth0) >> /etc/environment
+	echo PRIVATE_IP=$(ipof eth1) >> /etc/environment
+	echo PUBLIC_HOST=$(hostname) >> /etc/environment
+	echo PRIVATE_HOST=$(hostname).internal >> /etc/environment
+
+Remember to chmod +x it so it'll run.
+
+4. Create a default environment file in files/etc/environment:
+
+	PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games"
+	# IP and Host variables follow:
+
+env_init.sh will populate the rest.
+
+5. In your Telfile:
+
+	after_files do
+		run 'make -C /opt/ipof install'	# install ipof if needed
+		run '/opt/env_init/env_init.sh'	# init env vars
+	end
+
+6. All done. You can now use $(PUBLIC_IP), $(PRIVATE_IP), $(PUBLIC_HOST) and
+$(PRIVATE_HOST).
