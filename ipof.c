@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <err.h>
 
 int main(int argc, char* argv[])
 {
